@@ -26,7 +26,11 @@ module ClickMan
       # Assets precompiling or a first migration boots without the ClickMan
       # tables; publishing then waits for the next boot or `clickman:publish`.
       def publish_on_boot
-        publish!
+        if Setting.table_exists?
+          publish!
+        else
+          Rails.logger.info('[clickman] ingest settings not published at boot: the ClickMan tables are not migrated yet')
+        end
       rescue ActiveRecord::ActiveRecordError => error
         Rails.logger.info("[clickman] ingest settings not published at boot: #{error.message}")
       end

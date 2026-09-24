@@ -51,5 +51,14 @@ module ClickMan
 
       assert_instance_of expected, ClickMan.store
     end
+
+    test 'booting before the ClickMan tables exist publishes nothing and boots' do
+      ClickMan::Record.lease_connection.drop_table(:clickman_settings)
+      ClickMan::Setting.reset_column_information
+
+      assert_nothing_raised { ClickMan::Settings.publish_on_boot }
+    ensure
+      ClickMan::Setting.reset_column_information
+    end
   end
 end
