@@ -94,4 +94,3 @@ module ClickMan
   end
 end
 
-require 'click_man/engine' if defined?(Rails::Engine)
