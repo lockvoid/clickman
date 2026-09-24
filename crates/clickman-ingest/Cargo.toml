@@ -1,0 +1,36 @@
+[package]
+name = "clickman-ingest"
+description = "The ClickMan ingest server: receives event batches and writes them to storage."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "clickman-ingest"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+axum = "0.8.9"
+clickman-protocol.workspace = true
+flate2.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "0.10"
+sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-native-roots", "postgres", "sqlite", "json", "uuid", "time", "macros"] }
+time.workspace = true
+tokio = { version = "1.53", features = ["macros", "rt-multi-thread", "signal", "sync", "time", "net", "io-std", "io-util"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+uuid.workspace = true
+
+[dev-dependencies]
+http-body-util = "0.1"
+tower = { version = "0.5", features = ["util"] }

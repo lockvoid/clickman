@@ -1,0 +1,27 @@
+class CreateClickmanTables < ActiveRecord::Migration[<%= ActiveRecord::Migration.current_version %>]
+  TABLES = %w[
+    clickman_cursors
+    clickman_settings
+    clickman_reports
+    clickman_actor_days
+    clickman_daily_counts
+    clickman_chunks
+    clickman_actors
+    clickman_keys
+    clickman_event_names
+    clickman_events
+  ].freeze
+
+  def up
+<% statements.each_with_index do |statement, index| -%>
+<%= "\n" unless index.zero? -%>
+    execute <<~SQL
+<%= statement.gsub(/^(?=.)/, '      ') %>
+    SQL
+<% end -%>
+  end
+
+  def down
+    TABLES.each { drop_table it }
+  end
+end

@@ -1,0 +1,12 @@
+test:
+<% if ENV['CLICKMAN_TEST_ADAPTER'] == 'sqlite' %>
+  adapter: sqlite3
+  database: <%= Rails.root.join('tmp/clickman_test.sqlite3') %>
+  timeout: 5000
+<% else %>
+  adapter: postgresql
+  database: <%= ENV.fetch('CLICKMAN_TEST_DATABASE', 'clickman_test') %>
+  host: <%= ENV.fetch('PGHOST', 'localhost') %>
+  username: <%= ENV.fetch('PGUSER', ENV.fetch('USER', 'postgres')) %>
+  pool: 5
+<% end %>

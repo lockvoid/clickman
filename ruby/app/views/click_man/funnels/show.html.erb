@@ -1,0 +1,67 @@
+<% content_for :title, @funnel.name %>
+
+<%= link_to '← Analytics', root_path, class: 'back' %>
+<h1><%= @funnel.name %></h1>
+
+<% if @report %>
+  <% result = @report.result %>
+  <% entered = result['steps'].first['actors'] %>
+
+  <ol class="steps">
+    <% result['steps'].each do |step| %>
+      <li class="step">
+        <span class="events"><%= step['events'].join(' or ') %></span>
+        <span data-actors><%= count(step['actors']) %></span>
+        <span data-conversion><%= percent(step['actors'], entered) %></span>
+        <%= share_bar(step['actors'], entered) %>
+        <% if step['median_seconds'] %>
+          <span class="median">Median <%= median_time(step['median_seconds']) %> after the step before</span>
+        <% end %>
+      </li>
+    <% end %>
+  </ol>
+  <p class="computed">
+    Entries in the last <%= @funnel.range.inspect %>, <%= @funnel.window.inspect %> to finish.
+    Computed <%= time_ago_in_words(@report.computed_at) %> ago.
+  </p>
+
+  <% if result['breakdown'].any? %>
+    <h2>By <%= result['breakdown_key'] %></h2>
+    <table class="breakdown">
+      <thead>
+        <tr><th>Value</th><th class="number">Entered</th><th class="number">Completed</th><th class="number">Conversion</th></tr>
+      </thead>
+      <tbody>
+        <% result['breakdown'].each do |row| %>
+          <tr>
+            <td><%= row['value'].nil? ? '(none)' : row['value'] %></td>
+            <td class="number"><%= count(row['actors'].first) %></td>
+            <td class="number"><%= count(row['actors'].last) %></td>
+            <td class="number"><%= percent(row['actors'].last, row['actors'].first) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+
+  <% if result['days'].any? %>
+    <h2>By day of entry</h2>
+    <table class="days">
+      <thead>
+        <tr><th>Day</th><th class="number">Entered</th><th class="number">Completed</th><th class="number">Conversion</th></tr>
+      </thead>
+      <tbody>
+        <% result['days'].reverse_each do |row| %>
+          <tr>
+            <td><%= row['day'] %></td>
+            <td class="number"><%= count(row['actors'].first) %></td>
+            <td class="number"><%= count(row['actors'].last) %></td>
+            <td class="number"><%= percent(row['actors'].last, row['actors'].first) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+<% else %>
+  <p class="empty">This funnel is not computed yet. It appears after the next rotation.</p>
+<% end %>

@@ -1,0 +1,7 @@
+-dontwarn java.awt.**
+-keep class com.sun.jna.** { *; }
+-keep class * implements com.sun.jna.** { *; }
+-keep class com.lockvoid.clickman.ClickManNative { *; }
+-keep class com.lockvoid.clickman.ClickManBuf { *; }
+-keep class com.lockvoid.clickman.ClickManBuf$ByValue { *; }
+-keep class com.lockvoid.clickman.ClickManBatch { *; }

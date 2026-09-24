@@ -1,0 +1,6 @@
+ClickMan.configure do |config|
+<% if options[:database] -%>
+  config.database = :<%= options[:database] %>
+<% end -%>
+  config.write_keys = { app: ENV['CLICKMAN_WRITE_KEY'] }
+end

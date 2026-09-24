@@ -1,0 +1,29 @@
+[package]
+name = "clickman-core"
+description = "The ClickMan device core: a durable event queue that batches for the platform to send."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "clickman_core"
+# staticlib: linked into iOS apps through the XCFramework. cdylib: loaded by
+# JNA on Android and the JVM. rlib: Rust hosts. One extern-C surface,
+# include/clickman.h.
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+fastrand = "2"
+flate2.workspace = true
+rusqlite = { version = "0.39", features = ["bundled"] }
+serde_json.workspace = true
+thiserror.workspace = true
+time.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+clickman-protocol.workspace = true

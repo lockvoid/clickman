@@ -1,0 +1,87 @@
+<h1>Analytics</h1>
+
+<% if @actives %>
+  <% latest = @actives.result['days'].last %>
+  <section class="metrics">
+    <div class="metric"><span class="label">Daily actives</span><span class="value" data-metric="dau"><%= count(latest['dau']) %></span></div>
+    <div class="metric"><span class="label">Weekly actives</span><span class="value" data-metric="wau"><%= count(latest['wau']) %></span></div>
+    <div class="metric"><span class="label">Monthly actives</span><span class="value" data-metric="mau"><%= count(latest['mau']) %></span></div>
+  </section>
+  <%= bars(@actives.result['days'].map { it['dau'] }, label: 'Daily actives over the last 90 days') %>
+  <p class="computed">Computed <%= time_ago_in_words(@actives.computed_at) %> ago, days in UTC</p>
+<% else %>
+  <p class="empty">Reports are not computed yet. They appear after the first rotation: <code>bin/rails clickman:rotate</code>.</p>
+<% end %>
+
+<% if @events %>
+  <h2>Events in the last 30 days</h2>
+  <% if @events.result['events'].any? %>
+    <table class="events">
+      <thead>
+        <tr><th>Event</th><th class="number">Events</th><th class="number">Actors</th></tr>
+      </thead>
+      <tbody>
+        <% @events.result['events'].each do |row| %>
+          <tr>
+            <td><%= row['event'] %></td>
+            <td class="number"><%= count(row['events']) %></td>
+            <td class="number"><%= count(row['actors']) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="empty">No events in the last 30 days.</p>
+  <% end %>
+<% end %>
+
+<% if @retention %>
+  <h2>Retention</h2>
+  <% if @retention.result['cohorts'].any? %>
+    <table class="retention">
+      <thead>
+        <tr>
+          <th>First seen</th>
+          <th class="number">Actors</th>
+          <% ClickMan::Store::RETURN_DAYS.each do |days| %>
+            <th class="number">Day <%= days %></th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <% @retention.result['cohorts'].reverse.first(30).each do |cohort| %>
+          <tr>
+            <td><%= cohort['day'] %></td>
+            <td class="number"><%= count(cohort['size']) %></td>
+            <% ClickMan::Store::RETURN_DAYS.each do |days| %>
+              <td class="number"><%= percent(cohort["d#{days}"], cohort['size']) %></td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="empty">No one was seen for the first time in the last 90 days.</p>
+  <% end %>
+<% end %>
+
+<h2>Funnels</h2>
+<% if @funnels.any? %>
+  <ul class="funnels">
+    <% @funnels.each do |funnel| %>
+      <% steps = @funnel_steps[funnel.key] %>
+      <li>
+        <%= link_to funnel.name, funnel_path(funnel.key) %>
+        <span class="summary">
+          <% if steps %>
+            <%= count(steps.first['actors']) %> entered, <%= percent(steps.last['actors'], steps.first['actors']) %> completed
+          <% else %>
+            waiting for the next rotation
+          <% end %>
+        </span>
+      </li>
+    <% end %>
+  </ul>
+<% else %>
+  <p class="empty">No funnels yet. Each JSON file in <code>config/clickman/funnels</code> becomes one.</p>
+<% end %>

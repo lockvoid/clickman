@@ -1,0 +1,95 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+require 'open3'
+require 'timeout'
+
+$stdout.sync = true
+
+ROOT = File.expand_path('..', __dir__)
+LOG_DIR = File.join(ROOT, 'tmp/gates')
+KOTLIN_ENV = {
+  'JAVA_HOME' => `/usr/libexec/java_home -v 17 2>/dev/null`.strip,
+  'ANDROID_HOME' => ENV.fetch('ANDROID_HOME', '/opt/homebrew/share/android-commandlinetools')
+}.freeze
+
+Lane = Struct.new(:name, :commands, :timeout, :count, :env, keyword_init: true)
+
+def ruby_count(text)
+  runs, failures, errors = text.scan(/(\d+) runs, \d+ assertions, (\d+) failures, (\d+) errors/).last&.map(&:to_i)
+  runs && [runs, failures + errors]
+end
+
+def cargo_count(text)
+  results = text.scan(/^test result: \w+\. (\d+) passed; (\d+) failed/).map { it.map(&:to_i) }
+  results.any? ? [results.sum(&:first), results.sum(&:last)] : nil
+end
+
+def xctest_count(text)
+  runs, failures = text.scan(/Executed (\d+) tests?, with (\d+) failures?/).max_by { it.first.to_i }&.map(&:to_i)
+  runs && [runs, failures]
+end
+
+def junit_count(_text)
+  reports = Dir[File.join(ROOT, 'kotlin/*/build/test-results/{test,testDebugUnitTest}/*.xml')]
+  suites = reports.map { File.read(it)[/<testsuite [^>]*>/] }
+  return if suites.empty?
+
+  totals = suites.map { |suite| %w[tests failures errors].map { suite[/#{it}="(\d+)"/, 1].to_i } }
+  [totals.sum(&:first), totals.sum { it[1] + it[2] }]
+end
+
+def clean_count(_text)
+  [1, 0]
+end
+
+LANES = [
+  Lane.new(name: 'ruby', commands: [%w[bundle exec rake test]], timeout: 600, count: :ruby_count),
+  Lane.new(name: 'ruby-sqlite', commands: [%w[bundle exec rake test:sqlite]], timeout: 600, count: :ruby_count),
+  Lane.new(name: 'e2e', commands: [%w[bundle exec rake e2e]], timeout: 1_200, count: :ruby_count),
+  Lane.new(name: 'e2e-sqlite', commands: [%w[bundle exec rake e2e:sqlite]], timeout: 1_200, count: :ruby_count),
+  Lane.new(name: 'cargo', commands: [%w[cargo test --workspace --locked]], timeout: 1_200, count: :cargo_count),
+  Lane.new(name: 'clippy', commands: [%w[cargo clippy --workspace --all-targets --locked -- -D warnings]], timeout: 1_200, count: :clean_count),
+  Lane.new(name: 'swift', commands: [%w[scripts/build-xcframework.sh], %w[swift test]], timeout: 900, count: :xctest_count),
+  Lane.new(
+    name: 'kotlin',
+    commands: [%w[kotlin/build.sh host], %w[kotlin/gradlew --no-daemon -p kotlin :clickman:test :clickman-android:testDebugUnitTest]],
+    timeout: 1_200,
+    count: :junit_count,
+    env: KOTLIN_ENV
+  )
+].freeze
+
+def run_lane(lane)
+  log = File.join(LOG_DIR, "#{lane.name}.log")
+  FileUtils.rm_f(Dir[File.join(ROOT, 'kotlin/*/build/test-results/**/*.xml')]) if lane.name == 'kotlin'
+  exited_clean = File.open(log, 'w') do |file|
+    lane.commands.all? { run_command(lane, it, file) }
+  end
+
+  counted = send(lane.count, File.read(log, encoding: 'UTF-8').scrub)
+  green = exited_clean && counted && counted.first.positive? && counted.last.zero?
+  detail = counted ? "#{counted.first} run, #{counted.last} failed" : 'no result in the log'
+  puts format('%-11s %-5s %-28s %s', lane.name, green ? 'GREEN' : 'RED', detail, log.delete_prefix("#{ROOT}/"))
+  green
+end
+
+def run_command(lane, command, file)
+  file.puts("$ #{command.join(' ')}")
+  file.flush
+  pid = Process.spawn(lane.env || {}, *command, chdir: ROOT, out: file, err: file, pgroup: true)
+  Timeout.timeout(lane.timeout) { Process.wait(pid) }
+  Process.last_status.success?
+rescue Timeout::Error
+  Process.kill('KILL', -pid)
+  Process.wait(pid)
+  file.puts("gate: #{command.join(' ')} timed out after #{lane.timeout}s and was killed")
+  false
+end
+
+FileUtils.mkdir_p(LOG_DIR)
+chosen = ARGV.empty? ? LANES : LANES.select { ARGV.include?(it.name) }
+abort "gate: no lane named #{ARGV.join(', ')}; lanes are #{LANES.map(&:name).join(', ')}" if chosen.empty?
+
+results = chosen.map { run_lane(it) }
+exit(results.all? ? 0 : 1)

@@ -1,0 +1,1 @@
+require 'click_man'

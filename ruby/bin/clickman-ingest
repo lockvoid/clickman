@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+
+binary = ENV['CLICKMAN_INGEST_BINARY']
+exec(binary, *ARGV) if binary && !binary.empty?
+
+manifest = File.expand_path('../../Cargo.toml', __dir__)
+abort "clickman-ingest: set CLICKMAN_INGEST_BINARY, or install Rust to build it from #{manifest}" unless File.file?(manifest)
+
+exec('cargo', 'run', '--quiet', '--locked', '--manifest-path', manifest, '--package', 'clickman-ingest', '--', *ARGV)
