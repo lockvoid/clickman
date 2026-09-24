@@ -53,6 +53,7 @@ public final class ClickMan: @unchecked Sendable {
     private let poller: Task<Void, Never>
     private let network: NWPathMonitor?
     private let observers: [NSObjectProtocol]
+    let lifecycle: LifecycleTracking
 
     public init(configuration: Configuration) throws {
         let storage = try configuration.storage ?? Self.defaultStorage()
@@ -72,8 +73,10 @@ public final class ClickMan: @unchecked Sendable {
             session: configuration.session,
             logger: logger
         )
+        let lifecycle = LifecycleTracking(queue: queue, bundle: configuration.bundle, tracksLifecycle: configuration.tracksLifecycle)
         self.queue = queue
         self.sender = sender
+        self.lifecycle = lifecycle
 
         let interval = configuration.pollInterval
         poller = Task.detached(priority: .utility) {
@@ -92,13 +95,7 @@ public final class ClickMan: @unchecked Sendable {
             }
             monitor.start(queue: DispatchQueue(label: "com.lockvoid.clickman.network", qos: .utility))
             network = monitor
-            observers = Self.observeApplication(
-                sender: sender,
-                queue: queue,
-                bundle: configuration.bundle,
-                tracksLifecycle: configuration.tracksLifecycle,
-                logger: logger
-            )
+            observers = Self.observeApplication(sender: sender, lifecycle: lifecycle, logger: logger)
         } else {
             network = nil
             observers = []
@@ -171,29 +168,18 @@ public final class ClickMan: @unchecked Sendable {
         }
     }
 
-    private static func observeApplication(
-        sender: Sender,
-        queue: Queue,
-        bundle: Bundle,
-        tracksLifecycle: Bool,
-        logger: Logger
-    ) -> [NSObjectProtocol] {
+    private static func observeApplication(sender: Sender, lifecycle: LifecycleTracking, logger: Logger) -> [NSObjectProtocol] {
         #if canImport(UIKit)
         let center = NotificationCenter.default
         return [
             center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { _ in
-                if tracksLifecycle {
-                    queue.track("app_backgrounded", properties: "{}", at: Date())
-                }
+                lifecycle.didEnterBackground()
                 MainActor.assumeIsolated {
                     BackgroundFlush().start(sender: sender, logger: logger)
                 }
             },
             center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { _ in
-                refreshContext(of: queue, bundle: bundle)
-                if tracksLifecycle {
-                    queue.track("app_opened", properties: #"{"from_background":true}"#, at: Date())
-                }
+                lifecycle.willEnterForeground()
             },
         ]
         #else
