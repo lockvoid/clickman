@@ -38,12 +38,12 @@ module ClickMan
       @configuration = Configuration.new
     end
 
-    def track(event, external_id:, properties: {}, context: {}, at: Time.current)
+    def track(event, external_id:, properties: {}, context: {}, at: Time.current, message_id: SecureRandom.uuid_v7)
       sanitizer = configuration.sanitizer
       store.insert(
         [
           {
-            message_id: SecureRandom.uuid_v7,
+            message_id: message_id,
             occurred_at: at,
             received_at: Time.current,
             external_id: external_id.to_s,

@@ -107,7 +107,8 @@ ClickMan.track('subscription_started', external_id: user.id, properties: { produ
 ```
 
 The event is filtered like any other and never raises: a failure is reported to
-`Rails.error` and `track` returns `false`.
+`Rails.error` and `track` returns `false`. A `message_id:` (a UUID) makes it
+idempotent — the same id is stored once.
 
 ### Destinations
 

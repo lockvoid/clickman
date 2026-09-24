@@ -29,6 +29,14 @@ module ClickMan
       assert_equal({ 'price' => '[FILTERED]' }, ClickMan::Event.sole.properties)
     end
 
+    test 'a message id makes a server-side event idempotent' do
+      message_id = SecureRandom.uuid
+
+      2.times { ClickMan.track('credits_spent', external_id: 42, message_id: message_id) }
+
+      assert_equal [message_id], ClickMan::Event.pluck(:message_id)
+    end
+
     test 'a failure to store never reaches the caller' do
       store = ClickMan.method(:store)
       ClickMan.singleton_class.remove_method(:store)
