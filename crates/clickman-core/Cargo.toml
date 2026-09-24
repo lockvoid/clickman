@@ -19,11 +19,18 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [dependencies]
 fastrand = "2"
 flate2.workspace = true
-rusqlite = { version = "0.39", features = ["bundled"] }
 serde_json.workspace = true
 thiserror.workspace = true
 time.workspace = true
 uuid.workspace = true
+
+# The system SQLite on Apple platforms: a static library that brought its own
+# would shadow the app's for the whole app. Android's NDK has none to link.
+[target.'cfg(target_vendor = "apple")'.dependencies]
+rusqlite = "0.39"
+
+[target.'cfg(not(target_vendor = "apple"))'.dependencies]
+rusqlite = { version = "0.39", features = ["bundled"] }
 
 [dev-dependencies]
 clickman-protocol.workspace = true

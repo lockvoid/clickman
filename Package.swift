@@ -16,7 +16,8 @@ let package = Package(
         .target(
             name: "ClickMan",
             dependencies: ["ClickManCore"],
-            path: "swift/Sources/ClickMan"
+            path: "swift/Sources/ClickMan",
+            linkerSettings: [.linkedLibrary("sqlite3")]
         ),
         .executableTarget(
             name: "clickman-e2e-client",

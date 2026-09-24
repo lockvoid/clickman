@@ -154,7 +154,9 @@ filters and stores batches; everything else happens in Rails.
 
 Every client is a thin wrapper over one Rust core (`crates/clickman-core`, C
 API in `include/clickman.h`): a durable SQLite queue that batches, retries with
-backoff and survives restarts. The platform only does the networking.
+backoff and survives restarts. The platform only does the networking. On Apple
+platforms the core links the system SQLite, the one GRDB and Core Data use, and
+never a copy of its own; Android's NDK has none to link, so there it brings one.
 
 ### Swift
 

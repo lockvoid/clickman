@@ -30,7 +30,14 @@ EOF
 args=()
 for target in "${TARGETS[@]}"; do
   cargo build --manifest-path "$ROOT/Cargo.toml" -p clickman-core --release --locked --target "$target"
-  args+=(-library "$ROOT/target/$target/release/libclickman_core.a" -headers "$STAGE/Headers")
+  library="$ROOT/target/$target/release/libclickman_core.a"
+  # A library that defines sqlite3_* shadows the app's own SQLite for the whole app.
+  symbols="$(nm -gU --no-llvm-bc "$library")"
+  if grep -q ' T _sqlite3_' <<<"$symbols"; then
+    echo "$library defines SQLite symbols; the core must link the system SQLite on Apple platforms" >&2
+    exit 1
+  fi
+  args+=(-library "$library" -headers "$STAGE/Headers")
 done
 
 xcodebuild -create-xcframework "${args[@]}" -output "$OUT"
