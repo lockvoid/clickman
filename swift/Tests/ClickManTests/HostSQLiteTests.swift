@@ -20,13 +20,13 @@ final class HostSQLiteTests: XCTestCase {
         try? FileManager.default.removeItem(at: directory)
     }
 
-    func testAHostCallsTheSystemSQLite() {
-        XCTAssertEqual(Self.hostSQLiteImage(), "libsqlite3.dylib")
+    func testNoSQLiteIsLinkedIntoTheApp() {
+        XCTAssertNotEqual(Self.imageOfSQLite(), Self.imageOfThisTest())
     }
 
     func testAHostConnectionTakesAWALSnapshotBesideClickMan() throws {
-        // With a second SQLite in the app, `sqlite3_snapshot_get` below spins or crashes instead of failing.
-        guard Self.hostSQLiteImage() == "libsqlite3.dylib" else { return XCTFail("the host does not call the system SQLite") }
+        // With a SQLite linked into the app, `sqlite3_snapshot_get` below spins or crashes instead of failing.
+        guard Self.imageOfSQLite() != Self.imageOfThisTest() else { return XCTFail("a SQLite is linked into the app") }
 
         var configuration = ClickMan.Configuration(endpoint: URL(string: "https://ingest.test")!, writeKey: "ios-key")
         configuration.storage = directory.appending(path: "queue.sqlite")
@@ -47,11 +47,17 @@ final class HostSQLiteTests: XCTestCase {
         sqlite3_snapshot_free(snapshot)
     }
 
-    /// The file `sqlite3_open_v2` resolves to in this process.
-    private static func hostSQLiteImage() -> String? {
+    /// The file `sqlite3_open_v2` resolves to in this process: the system
+    /// library, or a shim Xcode puts in front of it on a simulator.
+    private static func imageOfSQLite() -> String? {
         let open: @convention(c) (UnsafePointer<CChar>?, UnsafeMutablePointer<OpaquePointer?>?, Int32, UnsafePointer<CChar>?) -> Int32 = sqlite3_open_v2
         var image = Dl_info()
         guard dladdr(unsafeBitCast(open, to: UnsafeRawPointer.self), &image) != 0, let file = image.dli_fname else { return nil }
         return URL(fileURLWithPath: String(cString: file)).lastPathComponent
+    }
+
+    /// The file this test runs from, ClickMan linked in.
+    private static func imageOfThisTest() -> String? {
+        Bundle(for: HostSQLiteTests.self).executableURL?.lastPathComponent
     }
 }

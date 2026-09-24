@@ -198,6 +198,7 @@ the verdict from the logs.
 | `bundle exec rake e2e` / `rake e2e:sqlite` | the Swift and Kotlin clients, the ingest server and the engine together |
 | `cargo test --workspace` | protocol, core and ingest server |
 | `swift test` | the Swift SDK (after `scripts/build-xcframework.sh`) |
+| `scripts/test-ios` | the Swift SDK on an iOS simulator, its UIKit half included |
 | `kotlin/gradlew -p kotlin test` | the Kotlin SDK (after `kotlin/build.sh host`) |
 
 ## License

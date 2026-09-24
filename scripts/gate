@@ -26,8 +26,7 @@ def cargo_count(text)
 end
 
 def xctest_count(text)
-  runs, failures = text.scan(/Executed (\d+) tests?, with (\d+) failures?/).max_by { it.first.to_i }&.map(&:to_i)
-  runs && [runs, failures]
+  text.scan(/Executed (\d+) tests?, with (?:\d+ tests? skipped and )?(\d+) failures?/).map { it.map(&:to_i) }.max_by(&:first)
 end
 
 def junit_count(_text)
@@ -51,6 +50,7 @@ LANES = [
   Lane.new(name: 'cargo', commands: [%w[cargo test --workspace --locked]], timeout: 1_200, count: :cargo_count),
   Lane.new(name: 'clippy', commands: [%w[cargo clippy --workspace --all-targets --locked -- -D warnings]], timeout: 1_200, count: :clean_count),
   Lane.new(name: 'swift', commands: [%w[scripts/build-xcframework.sh], %w[swift test]], timeout: 900, count: :xctest_count),
+  Lane.new(name: 'swift-ios', commands: [%w[scripts/build-xcframework.sh], %w[scripts/test-ios]], timeout: 1_200, count: :xctest_count),
   Lane.new(
     name: 'kotlin',
     commands: [%w[kotlin/build.sh host], %w[kotlin/gradlew --no-daemon -p kotlin :clickman:test :clickman-android:testDebugUnitTest]],
