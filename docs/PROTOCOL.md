@@ -143,14 +143,57 @@ counted in `duplicates` and not stored again.
 
 ## Clients
 
-A conforming client:
+The Swift, Kotlin and Rust clients each implement this section natively. They
+embed one store schema, `protocol/queue.sql`, and every client runs the shared
+fixtures in `protocol/fixtures` in its tests.
 
-- stores events on the device before sending and survives restarts;
-- sends a batch when 20 events are pending, when the oldest pending event is 30
-  seconds old, when the application moves to the background and when the
-  network returns;
-- keeps at most 10,000 events and drops events older than 30 days, oldest
-  first;
-- retries with exponential backoff — 5 seconds doubled up to 10 minutes, ±20%
-  jitter — and honors `Retry-After`;
-- never sends more than 500 events or 1 MiB in one batch.
+### The queue
+
+A client keeps its events in one SQLite file:
+
+- `events`, one row per tracked event, oldest first: `created_at` is
+  milliseconds since the Unix epoch by the device clock and `body` the event
+  exactly as it is sent.
+- `identity`, one row: the `externalId` of events tracked from now on (`*`,
+  the anonymous actor, until the host identifies someone), the traits, and the
+  version and build of the last launch.
+
+`PRAGMA user_version` is the store format, 1. A format 0 store is new, or was
+written by the 0.1 Rust core; `protocol/queue-upgrade.sql` moves the latter's
+`state` table into `identity`. A client refuses a store of a later format.
+
+### Tracking
+
+`track` stamps an event with a new UUIDv7 `messageId`, the current `externalId`,
+the device time as `timestamp` and the context: the platform's standard context
+(app, device, os, library, locale, timezone) with `traits` added when there are
+any. An event whose name or `externalId` breaks the event rules above, counted
+in Unicode scalar values, is not stored (`events.json`). The queue keeps at most
+10,000 events: the newest event drops the oldest beyond that.
+
+`identify` sets the `externalId` of later events and `reset` makes them
+anonymous again and forgets the traits. Traits merge key by key, a null value
+removing a trait (`traits.json`).
+
+A launch records `app_installed` when the store remembers no launch,
+`app_updated` when the version or the build differs from the last one, then
+`app_opened` with `from_background: false` (`lifecycle.json`). Leaving the
+foreground records `app_backgrounded` and coming back `app_opened` with
+`from_background: true`.
+
+### Sending
+
+A batch is due when 20 events are waiting, when the oldest has waited 30
+seconds, when the application leaves the foreground, when the network returns
+and when the host flushes. Events older than 30 days are deleted unsent before
+a batch is taken.
+
+A batch is the oldest waiting events, at most 100, while their bodies joined by
+commas stay within 900,000 bytes (`batches.json`), sent gzipped as
+`{"sentAt": …, "batch": [bodies]}`. One batch is in flight at a time. A
+delivered or refused batch leaves the queue; after any other answer it stays and
+the next attempt waits 5 seconds doubled per consecutive failure up to 10
+minutes, ±20% jitter, or the `Retry-After` when that is longer (`outcomes.json`,
+`backoff.json`). Failures are counted in memory, so a restarted client sends
+what is waiting at once. An event whose batch was delivered but not yet deleted
+when the app died is sent again and counted by the server as a duplicate.

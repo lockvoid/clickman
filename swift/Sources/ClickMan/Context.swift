@@ -1,26 +1,28 @@
 import Foundation
 
-/// The standard context of docs/PROTOCOL.md: app, device, os, library,
-/// locale and timezone.
+/// The standard context of docs/PROTOCOL.md: app, device, os, library, locale
+/// and timezone. It lives in memory and is never stored.
 enum Context {
-    static func current(bundle: Bundle = .main) -> [String: Any] {
-        let info = bundle.infoDictionary ?? [:]
-        let version = ProcessInfo.processInfo.operatingSystemVersion
-
-        var app: [String: Any] = [:]
-        app["name"] = info["CFBundleDisplayName"] ?? info["CFBundleName"]
-        app["version"] = info["CFBundleShortVersionString"]
-        app["build"] = info["CFBundleVersion"]
-        app["namespace"] = bundle.bundleIdentifier
-
-        return [
-            "app": app,
-            "device": ["manufacturer": "Apple", "model": model, "type": deviceType],
-            "os": ["name": osName, "version": "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"],
-            "library": ["name": "clickman-swift", "version": ClickMan.version],
-            "locale": Locale.current.identifier(.bcp47),
-            "timezone": TimeZone.current.identifier,
+    static func current(bundle: Bundle) -> [String: JSONValue] {
+        [
+            "app": .object(app(bundle)),
+            "device": .object(["manufacturer": .string("Apple"), "model": .string(model), "type": .string(deviceType)]),
+            "os": .object(["name": .string(osName), "version": .string(osVersion)]),
+            "library": .object(["name": .string("clickman-swift"), "version": .string(ClickMan.version)]),
+            "locale": .string(Locale.current.identifier(.bcp47)),
+            "timezone": .string(TimeZone.current.identifier),
         ]
+    }
+
+    private static func app(_ bundle: Bundle) -> [String: JSONValue] {
+        let info = bundle.infoDictionary ?? [:]
+        let fields: [String: String?] = [
+            "name": (info["CFBundleDisplayName"] ?? info["CFBundleName"]) as? String,
+            "version": info["CFBundleShortVersionString"] as? String,
+            "build": info["CFBundleVersion"] as? String,
+            "namespace": bundle.bundleIdentifier,
+        ]
+        return fields.compactMapValues { $0.map(JSONValue.string) }
     }
 
     private static var model: String {
@@ -32,6 +34,11 @@ enum Context {
         return withUnsafeBytes(of: &system.machine) { bytes in
             String(decoding: bytes.prefix { $0 != 0 }, as: UTF8.self)
         }
+    }
+
+    private static var osVersion: String {
+        let version = ProcessInfo.processInfo.operatingSystemVersion
+        return "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
     }
 
     private static var osName: String {

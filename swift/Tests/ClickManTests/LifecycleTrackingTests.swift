@@ -5,35 +5,16 @@ import UIKit
 #endif
 @testable import ClickMan
 
-final class LifecycleTrackingTests: XCTestCase {
-    private var storage: URL!
-
-    override func setUp() {
-        storage = FileManager.default.temporaryDirectory
-            .appending(path: "clickman-lifecycle-\(UUID().uuidString)", directoryHint: .isDirectory)
-            .appending(path: "queue.sqlite")
-        StubServer.reset()
-    }
-
-    override func tearDown() {
-        try? FileManager.default.removeItem(at: storage.deletingLastPathComponent())
-    }
-
+final class LifecycleTrackingTests: StoreTestCase {
     private func makeClickMan(observesSystem: Bool = false, tracksLifecycle: Bool = true) throws -> ClickMan {
-        var configuration = ClickMan.Configuration(endpoint: URL(string: "https://ingest.test")!, writeKey: "ios-key")
-        configuration.storage = storage
-        configuration.session = StubServer.session()
-        configuration.pollInterval = .seconds(3600)
+        var configuration = ClickMan.Configuration.test(storage: storage)
         configuration.observesSystem = observesSystem
         configuration.tracksLifecycle = tracksLifecycle
         return try ClickMan(configuration: configuration)
     }
 
-    private func sentEvents() throws -> [(event: String, properties: [String: Any])] {
-        try StubServer.requests.flatMap { request in
-            let batch = try JSONSerialization.jsonObject(with: gunzip(request.body)) as! [String: Any]
-            return (batch["batch"] as! [[String: Any]]).map { ($0["event"] as! String, $0["properties"] as! [String: Any]) }
-        }
+    private func sentEvents() throws -> [(event: JSONValue?, properties: JSONValue?)] {
+        try StubServer.events().map { ($0["event"], $0["properties"]) }
     }
 
     func testTheFirstForegroundEntryIsTheLaunchAndIsNotReportedAgain() async throws {
@@ -43,8 +24,8 @@ final class LifecycleTrackingTests: XCTestCase {
         await clickMan.flush()
 
         let events = try sentEvents()
-        XCTAssertEqual(events.map(\.event), ["app_installed", "app_opened"])
-        XCTAssertEqual(events.last?.properties["from_background"] as? Bool, false)
+        XCTAssertEqual(events.map(\.event), [.string("app_installed"), .string("app_opened")])
+        XCTAssertEqual(events.last?.properties, .object(["from_background": .bool(false)]))
     }
 
     func testLeavingAndReturningIsABackgroundingAndAnOpenFromTheBackground() async throws {
@@ -58,8 +39,9 @@ final class LifecycleTrackingTests: XCTestCase {
         await clickMan.flush()
 
         let events = try sentEvents()
-        XCTAssertEqual(events.map(\.event), ["app_installed", "app_opened", "export_completed", "app_backgrounded", "app_opened"])
-        XCTAssertEqual(events.last?.properties["from_background"] as? Bool, true)
+        let names = ["app_installed", "app_opened", "export_completed", "app_backgrounded", "app_opened"]
+        XCTAssertEqual(events.map(\.event), names.map(JSONValue.string))
+        XCTAssertEqual(events.last?.properties, .object(["from_background": .bool(true)]))
     }
 
     func testWithoutLifecycleEventsLeavingAndReturningReportNothing() async throws {
@@ -70,7 +52,7 @@ final class LifecycleTrackingTests: XCTestCase {
         clickMan.lifecycle.willEnterForeground()
         await clickMan.flush()
 
-        XCTAssertEqual(try sentEvents().map(\.event), ["export_completed"])
+        XCTAssertEqual(try sentEvents().map(\.event), [.string("export_completed")])
     }
 
     #if canImport(UIKit)
@@ -81,8 +63,8 @@ final class LifecycleTrackingTests: XCTestCase {
         await clickMan.flush()
 
         let events = try sentEvents()
-        XCTAssertEqual(events.map(\.event), ["app_installed", "app_opened"])
-        XCTAssertEqual(events.last?.properties["from_background"] as? Bool, false)
+        XCTAssertEqual(events.map(\.event), [.string("app_installed"), .string("app_opened")])
+        XCTAssertEqual(events.last?.properties, .object(["from_background": .bool(false)]))
     }
     #endif
 }

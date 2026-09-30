@@ -1,0 +1,41 @@
+require 'rake/testtask'
+
+ROOT = File.expand_path('..', __dir__)
+RUST = File.join(ROOT, 'rust')
+
+Rake::TestTask.new(:test) do |task|
+  task.libs << 'test'
+  task.libs << 'lib'
+  task.test_files = FileList['test/**/*_test.rb'].exclude('test/e2e/**/*')
+end
+
+Rake::TestTask.new(:e2e) do |task|
+  task.libs << 'test'
+  task.libs << 'lib'
+  task.pattern = 'test/e2e/**/*_test.rb'
+end
+
+namespace :test do
+  task :sqlite do
+    ENV['CLICKMAN_TEST_ADAPTER'] = 'sqlite'
+    Rake::Task[:test].invoke
+  end
+end
+
+namespace :e2e do
+  task :sqlite do
+    ENV['CLICKMAN_TEST_ADAPTER'] = 'sqlite'
+    Rake::Task[:e2e].invoke
+  end
+
+  desc 'Build the ingest server and the Swift, Kotlin and Rust workers the E2E suite drives'
+  task :build do
+    sh 'cargo', 'build', '--locked', '--manifest-path', File.join(RUST, 'Cargo.toml'), '--package', 'clickman-ingest', '--package', 'clickman-e2e-worker'
+    sh 'swift', 'build', '--package-path', ROOT, '--product', 'ClickManE2EWorker'
+    sh File.join(ROOT, 'kotlin/gradlew'), '--quiet', '-p', File.join(ROOT, 'kotlin'), ':e2e-worker:installDist'
+    ENV['CLICKMAN_INGEST_BINARY'] = File.join(RUST, 'target/debug/clickman-ingest')
+  end
+end
+
+task e2e: 'e2e:build'
+task default: :test

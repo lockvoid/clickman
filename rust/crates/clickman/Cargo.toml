@@ -1,0 +1,29 @@
+[package]
+name = "clickman"
+description = "The ClickMan client for Rust applications: tracked events wait in SQLite and go to the ingest server in gzipped batches."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+fastrand = "2"
+flate2.workspace = true
+log = "0.4"
+parking_lot = "0.12"
+rusqlite = { version = "0.39", features = ["bundled", "fallible_uint"] }
+serde_json.workspace = true
+thiserror.workspace = true
+time.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+axum = "0.8"
+reqwest.workspace = true
+tempfile = "3"
+tokio = { workspace = true, features = ["macros", "net", "rt-multi-thread", "sync", "time"] }
+
+[lints]
+workspace = true

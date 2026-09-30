@@ -1,4 +1,5 @@
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google()
         mavenCentral()
@@ -18,7 +19,14 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "clickman-kotlin"
+rootProject.name = "clickman"
 
 include(":clickman")
-include(":clickman-android")
+include(":e2e-worker")
+project(":clickman").projectDir = file("libraries/clickman")
+
+// The AAR needs an Android SDK; JVM-only builds leave it out.
+if (providers.gradleProperty("android").orNull == "true" || providers.environmentVariable("ANDROID_HOME").isPresent) {
+    include(":clickman-android")
+    project(":clickman-android").projectDir = file("libraries/clickman-android")
+}

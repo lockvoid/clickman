@@ -1,0 +1,57 @@
+{
+  "description": "A batch takes the oldest waiting events, at most maxEvents, while their bodies joined by commas stay within maxBytes UTF-8 bytes; the oldest event is taken even alone over the limit.",
+  "cases": [
+    {
+      "name": "everything fits",
+      "maxEvents": 100,
+      "maxBytes": 900000,
+      "bodies": [
+        "{\"a\":1}",
+        "{\"b\":2}"
+      ],
+      "taken": 2
+    },
+    {
+      "name": "the event limit",
+      "maxEvents": 2,
+      "maxBytes": 900000,
+      "bodies": [
+        "{}",
+        "{}",
+        "{}"
+      ],
+      "taken": 2
+    },
+    {
+      "name": "the byte limit counts the commas",
+      "maxEvents": 100,
+      "maxBytes": 5,
+      "bodies": [
+        "{}",
+        "{}",
+        "{}"
+      ],
+      "taken": 2
+    },
+    {
+      "name": "bytes are UTF-8 bytes",
+      "maxEvents": 100,
+      "maxBytes": 8,
+      "bodies": [
+        "\"é\"",
+        "\"é\""
+      ],
+      "taken": 1
+    },
+    {
+      "name": "an oversized oldest event goes alone",
+      "maxEvents": 100,
+      "maxBytes": 3,
+      "bodies": [
+        "{\"large\":1}",
+        "{}"
+      ],
+      "taken": 1
+    }
+  ]
+}

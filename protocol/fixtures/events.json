@@ -1,0 +1,119 @@
+{
+  "description": "Event names are 1-200 and external ids 1-256 Unicode scalar values without control characters (the ingest server refuses anything else); a client stores only events that pass.",
+  "cases": [
+    {
+      "name": "a plain name",
+      "field": "event",
+      "value": "export_completed",
+      "valid": true
+    },
+    {
+      "name": "one character",
+      "field": "event",
+      "value": "a",
+      "valid": true
+    },
+    {
+      "name": "spaces and letters of any script",
+      "field": "event",
+      "value": "Экспорт завершён",
+      "valid": true
+    },
+    {
+      "name": "200 characters",
+      "field": "event",
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "valid": true
+    },
+    {
+      "name": "200 characters outside the basic plane",
+      "field": "event",
+      "value": "👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍",
+      "valid": true
+    },
+    {
+      "name": "empty",
+      "field": "event",
+      "value": "",
+      "valid": false
+    },
+    {
+      "name": "201 characters",
+      "field": "event",
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "valid": false
+    },
+    {
+      "name": "201 characters outside the basic plane",
+      "field": "event",
+      "value": "👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍👍",
+      "valid": false
+    },
+    {
+      "name": "a tab",
+      "field": "event",
+      "value": "export\tcompleted",
+      "valid": false
+    },
+    {
+      "name": "a line break",
+      "field": "event",
+      "value": "export\ncompleted",
+      "valid": false
+    },
+    {
+      "name": "a null character",
+      "field": "event",
+      "value": "export\u0000",
+      "valid": false
+    },
+    {
+      "name": "delete",
+      "field": "event",
+      "value": "export\u007f",
+      "valid": false
+    },
+    {
+      "name": "a C1 control",
+      "field": "event",
+      "value": "export\u0085",
+      "valid": false
+    },
+    {
+      "name": "a user id",
+      "field": "externalId",
+      "value": "42",
+      "valid": true
+    },
+    {
+      "name": "the anonymous actor",
+      "field": "externalId",
+      "value": "*",
+      "valid": true
+    },
+    {
+      "name": "256 characters",
+      "field": "externalId",
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "valid": true
+    },
+    {
+      "name": "an empty id",
+      "field": "externalId",
+      "value": "",
+      "valid": false
+    },
+    {
+      "name": "257 characters",
+      "field": "externalId",
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "valid": false
+    },
+    {
+      "name": "a line break in an id",
+      "field": "externalId",
+      "value": "4\n2",
+      "valid": false
+    }
+  ]
+}

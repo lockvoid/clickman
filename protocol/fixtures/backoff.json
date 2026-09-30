@@ -1,0 +1,82 @@
+{
+  "description": "Seconds before the next attempt after consecutive failures: 5 doubled per failure up to 600, scaled by a random factor in 0.8-1.2. A Retry-After longer than that delay wins.",
+  "cases": [
+    {
+      "name": "1 failure",
+      "failures": 1,
+      "retryAfter": null,
+      "min": 4.0,
+      "max": 6.0
+    },
+    {
+      "name": "2 failures",
+      "failures": 2,
+      "retryAfter": null,
+      "min": 8.0,
+      "max": 12.0
+    },
+    {
+      "name": "3 failures",
+      "failures": 3,
+      "retryAfter": null,
+      "min": 16.0,
+      "max": 24.0
+    },
+    {
+      "name": "4 failures",
+      "failures": 4,
+      "retryAfter": null,
+      "min": 32.0,
+      "max": 48.0
+    },
+    {
+      "name": "5 failures",
+      "failures": 5,
+      "retryAfter": null,
+      "min": 64.0,
+      "max": 96.0
+    },
+    {
+      "name": "6 failures",
+      "failures": 6,
+      "retryAfter": null,
+      "min": 128.0,
+      "max": 192.0
+    },
+    {
+      "name": "7 failures",
+      "failures": 7,
+      "retryAfter": null,
+      "min": 256.0,
+      "max": 384.0
+    },
+    {
+      "name": "8 failures",
+      "failures": 8,
+      "retryAfter": null,
+      "min": 480.0,
+      "max": 720.0
+    },
+    {
+      "name": "40 failures",
+      "failures": 40,
+      "retryAfter": null,
+      "min": 480.0,
+      "max": 720.0
+    },
+    {
+      "name": "a longer Retry-After wins",
+      "failures": 1,
+      "retryAfter": 30,
+      "min": 30,
+      "max": 30
+    },
+    {
+      "name": "a shorter Retry-After loses",
+      "failures": 3,
+      "retryAfter": 2,
+      "min": 16,
+      "max": 24
+    }
+  ]
+}

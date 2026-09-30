@@ -1,0 +1,76 @@
+[tools]
+ruby = "4.0.5"
+java = "zulu-17"
+
+[tasks."test:contract"]
+description = "The embedded queue schema copies match protocol/"
+dir = "{{config_root}}"
+run = "ruby tools/queue_schema.rb --check"
+
+[tasks.ingest-templates]
+description = "The template databases the ingest server tests copy, built by the engine migration"
+dir = "{{config_root}}"
+env = { BUNDLE_GEMFILE = "{{config_root}}/ruby/Gemfile" }
+run = "bundle exec ruby tools/ingest_templates.rb"
+
+[tasks."test:rails"]
+dir = "{{config_root}}/ruby"
+run = "bundle exec rake test"
+
+[tasks."test:rails-sqlite"]
+dir = "{{config_root}}/ruby"
+run = "bundle exec rake test:sqlite"
+
+[tasks."test:rust"]
+dir = "{{config_root}}/rust"
+depends = ["ingest-templates"]
+run = [
+  "cargo test --workspace --locked",
+  "cargo clippy --workspace --all-targets --locked -- -D warnings",
+]
+
+[tasks."test:swift"]
+dir = "{{config_root}}"
+run = "swift test"
+
+[tasks."test:swift-ios"]
+description = "The Swift tests on an iOS simulator, the UIKit half included"
+dir = "{{config_root}}"
+run = "scripts/test-ios"
+
+[tasks."test:kotlin"]
+dir = "{{config_root}}/kotlin"
+run = "./gradlew --console=plain --rerun-tasks :clickman:test"
+
+[tasks."test:kotlin-android"]
+dir = "{{config_root}}/kotlin"
+run = "./gradlew --console=plain --rerun-tasks -Pandroid=true :clickman-android:testDebugUnitTest"
+
+[tasks.test]
+description = "Every suite, one at a time"
+run = [
+  "mise run test:contract",
+  "mise run test:rails",
+  "mise run test:rails-sqlite",
+  "mise run test:rust",
+  "mise run test:swift",
+  "mise run test:kotlin",
+  "mise run test:kotlin-android",
+]
+
+[tasks."e2e:postgres"]
+description = "The Swift, Kotlin and Rust workers through the real ingest server into the engine on PostgreSQL"
+dir = "{{config_root}}/ruby"
+run = "bundle exec rake e2e"
+
+[tasks."e2e:sqlite"]
+description = "The same on SQLite"
+dir = "{{config_root}}/ruby"
+run = "bundle exec rake e2e:sqlite"
+
+[tasks.e2e]
+description = "Every E2E history on both databases"
+run = [
+  "mise run e2e:postgres",
+  "mise run e2e:sqlite",
+]

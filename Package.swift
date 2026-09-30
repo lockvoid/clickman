@@ -1,6 +1,8 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
+/// ClickMan for Apple platforms: a native client of docs/PROTOCOL.md. Events wait
+/// in a GRDB store (protocol/queue.sql) and leave in gzipped batches.
 let package = Package(
     name: "ClickMan",
     platforms: [
@@ -10,23 +12,23 @@ let package = Package(
     products: [
         .library(name: "ClickMan", targets: ["ClickMan"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.0.0"),
+    ],
     targets: [
-        // Built by scripts/build-xcframework.sh from crates/clickman-core.
-        .binaryTarget(name: "ClickManCore", path: "swift/ClickManCore.xcframework"),
         .target(
             name: "ClickMan",
-            dependencies: ["ClickManCore"],
-            path: "swift/Sources/ClickMan",
-            linkerSettings: [.linkedLibrary("sqlite3")]
+            dependencies: [.product(name: "GRDB", package: "GRDB.swift")],
+            path: "swift/Sources/ClickMan"
         ),
         .executableTarget(
-            name: "clickman-e2e-client",
+            name: "ClickManE2EWorker",
             dependencies: ["ClickMan"],
-            path: "swift/EndToEndClient"
+            path: "swift/Sources/ClickManE2EWorker"
         ),
         .testTarget(
             name: "ClickManTests",
-            dependencies: ["ClickMan"],
+            dependencies: ["ClickMan", .product(name: "GRDB", package: "GRDB.swift")],
             path: "swift/Tests/ClickManTests"
         ),
     ]

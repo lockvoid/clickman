@@ -131,8 +131,8 @@ application's configuration.
 
 ## SQLite
 
-The SQLite store (`sql/sqlite/v1.sql`) keeps the same tables for an app that runs
-on one server, with these differences:
+The SQLite store keeps the same tables, built by the same migration
+(`ruby/db/migrate`), for an app that runs on one server, with these differences:
 
 - Chunks are one table; retention deletes their rows by day instead of dropping
   partitions.

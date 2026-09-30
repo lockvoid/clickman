@@ -3,39 +3,42 @@ import os
 
 /// The app's lifecycle as events: `app_backgrounded` when it leaves the
 /// foreground, `app_opened` when it comes back. The first entry into the
-/// foreground is the launch, which `appLaunched` has already reported; a
+/// foreground is the launch, which the launch events already report; a
 /// scene-based app is told `willEnterForeground` for it all the same.
 final class LifecycleTracking: Sendable {
-    private let queue: Queue
-    private let bundle: Bundle
-    private let tracksLifecycle: Bool
-    private let backgrounded = OSAllocatedUnfairLock(initialState: false)
+    private enum Place {
+        case foreground
+        case background
+    }
 
-    init(queue: Queue, bundle: Bundle, tracksLifecycle: Bool) {
-        self.queue = queue
-        self.bundle = bundle
+    private let tracker: Tracker
+    private let tracksLifecycle: Bool
+    private let place = OSAllocatedUnfairLock(initialState: Place.foreground)
+
+    init(tracker: Tracker, tracksLifecycle: Bool) {
+        self.tracker = tracker
         self.tracksLifecycle = tracksLifecycle
     }
 
     func didEnterBackground() {
-        backgrounded.withLock { $0 = true }
+        place.withLock { $0 = .background }
         if tracksLifecycle {
-            queue.track("app_backgrounded", properties: "{}", at: Date())
+            tracker.track(.appBackgrounded)
         }
     }
 
     func willEnterForeground() {
-        let returning = backgrounded.withLock { backgrounded in
-            defer { backgrounded = false }
-            return backgrounded
+        let left = place.withLock { place in
+            defer { place = .foreground }
+            return place
         }
-        guard returning else {
+        guard left == .background else {
             return
         }
 
-        ClickMan.refreshContext(of: queue, bundle: bundle)
+        tracker.refreshContext()
         if tracksLifecycle {
-            queue.track("app_opened", properties: #"{"from_background":true}"#, at: Date())
+            tracker.track(.appOpened(fromBackground: true))
         }
     }
 }

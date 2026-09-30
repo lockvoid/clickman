@@ -25,6 +25,7 @@ or anywhere else.
 - `docs/PROTOCOL.md` — the wire format every client speaks (Segment's shape, with `externalId`).
 - `docs/STORAGE.md` — the tables, the chunk format, rotation, retention and erasure.
 - `docs/FUNNELS.md` — the funnel files.
+- `docs/INSTALLATION.md` — the Rails engine, the Swift package, the Kotlin build and the Rust crate in a host.
 
 ## Rails
 
@@ -35,14 +36,16 @@ gem 'clickman'
 ```
 
 ```sh
-bin/rails generate clickman:install --database analytics   # or without --database for the primary one
+bin/rails generate clickman:install --database analytics      # or without --database for the primary one
+bin/rails click_man:install:migrations DATABASE=analytics     # or without DATABASE for the primary one
 bin/rails db:migrate
 ```
 
-The generator writes the schema migration for the database's adapter,
-`config/initializers/clickman.rb` and `config/clickman/funnels/`. On PostgreSQL
-keep the database dump in SQL (`schema_format = :sql`): the chunk table is
-partitioned, which `schema.rb` cannot express.
+The generator writes `config/initializers/clickman.rb` and
+`config/clickman/funnels/`; the engine's migration builds the tables on
+PostgreSQL or SQLite. On PostgreSQL keep the database dump in SQL
+(`schema_format = :sql`): `schema.rb` drops the chunk table's
+`SET STORAGE EXTERNAL`.
 
 ### Configure
 
@@ -152,11 +155,11 @@ filters and stores batches; everything else happens in Rails.
 
 ## Apps
 
-Every client is a thin wrapper over one Rust core (`crates/clickman-core`, C
-API in `include/clickman.h`): a durable SQLite queue that batches, retries with
-backoff and survives restarts. The platform only does the networking. On Apple
-platforms the core links the system SQLite, the one GRDB and Core Data use, and
-never a copy of its own; Android's NDK has none to link, so there it brings one.
+Each client is a native implementation of the client rules in
+`docs/PROTOCOL.md`: a SQLite queue in the format of `protocol/queue.sql` that
+batches, retries with backoff and survives restarts, and the lifecycle events
+`app_installed`, `app_updated`, `app_opened` and `app_backgrounded`. The shared
+fixtures in `protocol/fixtures` run in every client's tests.
 
 ### Swift
 
@@ -167,9 +170,8 @@ analytics.setTraits(["plan": "pro"])
 analytics.track("export_completed", properties: ["format": "mp4"])
 ```
 
-Build the core with `scripts/build-xcframework.sh`. The SDK sends
-`app_installed`, `app_updated`, `app_opened` and `app_backgrounded` and sends
-what is waiting when the app leaves the foreground or the network returns.
+The package is the repository root and brings GRDB 7; the SDK sends what is
+waiting when the app leaves the foreground or the network returns.
 
 ### Kotlin
 
@@ -179,27 +181,45 @@ analytics.identify("42")
 analytics.track("export_completed", mapOf("format" to "mp4"))
 ```
 
-`kotlin/clickman` runs on any JVM; `kotlin/clickman-android` adds the Android
-context, the lifecycle events and the arm64 library (`kotlin/build.sh android`).
+`kotlin/libraries/clickman` runs on any JVM over the `androidx.sqlite` driver
+it is given; `kotlin/libraries/clickman-android` adds the Android context, the
+lifecycle events and the OS SQLite.
 
 ### Rust
 
-`clickman-core` is a regular crate: `Client::open`, `track`, `take_batch`, and
-`complete` once your HTTP client has sent the batch.
+```rust
+let analytics = ClickMan::open(Config::new("https://clickman.example.com", "…", queue_path), http)?;
+analytics.identify("42")?;
+analytics.track("export_completed", json!({ "format": "mp4" }))?;
+analytics.send_due().await?; // on the host's own timer, e.g. every 5 seconds
+```
+
+`http` is the host's `HttpClient`; the crate links no runtime.
 
 ## Development
 
-`scripts/gate` runs every lane below, one log each under `tmp/gates/`, and reads
-the verdict from the logs.
+Every suite runs through [mise](https://mise.jdx.dev); `scripts/gate` runs them
+one at a time, one log each under `tmp/gates/`, and reads the verdict from the
+logs.
 
 | | |
 |---|---|
-| `bundle exec rake test` / `rake test:sqlite` | the Rails engine on PostgreSQL / SQLite |
-| `bundle exec rake e2e` / `rake e2e:sqlite` | the Swift and Kotlin clients, the ingest server and the engine together |
-| `cargo test --workspace` | protocol, core and ingest server |
-| `swift test` | the Swift SDK (after `scripts/build-xcframework.sh`) |
-| `scripts/test-ios` | the Swift SDK on an iOS simulator, its UIKit half included |
-| `kotlin/gradlew -p kotlin test` | the Kotlin SDK (after `kotlin/build.sh host`) |
+| `mise run test:contract` | the embedded queue schema copies match `protocol/` |
+| `mise run test:rails` / `test:rails-sqlite` | the Rails engine on PostgreSQL / SQLite |
+| `mise run test:rust` | the protocol, the ingest server on template databases the migration builds, the Rust client, clippy |
+| `mise run test:swift` / `test:swift-ios` | the Swift client on the Mac / on an iOS simulator |
+| `mise run test:kotlin` / `test:kotlin-android` | the Kotlin client / its Android half |
+| `mise run e2e` | the Swift, Kotlin and Rust workers through the real ingest server into the engine, on both databases |
+
+| Directory | Contents |
+|---|---|
+| `protocol` | the device queue schema and the shared fixtures |
+| `ruby` | the `clickman` Rails engine and its migration |
+| `rust` | Cargo workspace: the ingest server, the wire protocol, the Rust client and its E2E worker |
+| `swift` | the Swift client, its tests and E2E worker (`Package.swift` is at the root) |
+| `kotlin` | Gradle build: the JVM client, its Android half and the E2E worker |
+| `tools` | the queue schema embedding and the ingest test templates |
+| `docs` | the protocol, the storage, the funnels, installation |
 
 ## License
 

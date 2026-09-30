@@ -1,0 +1,71 @@
+{
+  "description": "Traits merge key by key into the stored ones: a null value removes a trait and a nested value replaces the old one whole.",
+  "cases": [
+    {
+      "name": "a first trait",
+      "stored": {},
+      "changes": {
+        "plan": "pro"
+      },
+      "traits": {
+        "plan": "pro"
+      }
+    },
+    {
+      "name": "a change keeps the other traits",
+      "stored": {
+        "plan": "pro",
+        "seats": 3
+      },
+      "changes": {
+        "plan": "team"
+      },
+      "traits": {
+        "plan": "team",
+        "seats": 3
+      }
+    },
+    {
+      "name": "null removes a trait",
+      "stored": {
+        "plan": "pro",
+        "seats": 3
+      },
+      "changes": {
+        "plan": null
+      },
+      "traits": {
+        "seats": 3
+      }
+    },
+    {
+      "name": "a nested value is replaced whole",
+      "stored": {
+        "team": {
+          "id": 1,
+          "size": 2
+        }
+      },
+      "changes": {
+        "team": {
+          "id": 2
+        }
+      },
+      "traits": {
+        "team": {
+          "id": 2
+        }
+      }
+    },
+    {
+      "name": "removing the last trait leaves none",
+      "stored": {
+        "plan": "pro"
+      },
+      "changes": {
+        "plan": null
+      },
+      "traits": {}
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "description": "The events a launch records, from the last launch the store remembers (null before the first) and the version and build of this one.",
+  "cases": [
+    {
+      "name": "the first launch is an install",
+      "last": null,
+      "launch": {
+        "version": "1.0",
+        "build": "10"
+      },
+      "events": [
+        {
+          "event": "app_installed",
+          "properties": {
+            "version": "1.0",
+            "build": "10"
+          }
+        },
+        {
+          "event": "app_opened",
+          "properties": {
+            "from_background": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "the same version and build is an open",
+      "last": {
+        "version": "1.0",
+        "build": "10"
+      },
+      "launch": {
+        "version": "1.0",
+        "build": "10"
+      },
+      "events": [
+        {
+          "event": "app_opened",
+          "properties": {
+            "from_background": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "a new version is an update",
+      "last": {
+        "version": "1.0",
+        "build": "10"
+      },
+      "launch": {
+        "version": "1.1",
+        "build": "11"
+      },
+      "events": [
+        {
+          "event": "app_updated",
+          "properties": {
+            "version": "1.1",
+            "build": "11",
+            "previous_version": "1.0",
+            "previous_build": "10"
+          }
+        },
+        {
+          "event": "app_opened",
+          "properties": {
+            "from_background": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "a new build of the same version is an update",
+      "last": {
+        "version": "1.0",
+        "build": "10"
+      },
+      "launch": {
+        "version": "1.0",
+        "build": "12"
+      },
+      "events": [
+        {
+          "event": "app_updated",
+          "properties": {
+            "version": "1.0",
+            "build": "12",
+            "previous_version": "1.0",
+            "previous_build": "10"
+          }
+        },
+        {
+          "event": "app_opened",
+          "properties": {
+            "from_background": false
+          }
+        }
+      ]
+    }
+  ]
+}

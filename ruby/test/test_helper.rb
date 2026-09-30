@@ -3,7 +3,7 @@ ENV['RAILS_ENV'] = 'test'
 require_relative 'dummy/config/environment'
 
 module ClickManTestDatabase
-  ROOT = File.expand_path('../..', __dir__)
+  MIGRATIONS = File.expand_path('../db/migrate', __dir__)
 
   def self.adapter
     ActiveRecord::Base.connection_db_config.adapter
@@ -29,7 +29,11 @@ module ClickManTestDatabase
     connection = ActiveRecord::Base.connection
     connection.execute('DROP SCHEMA public CASCADE')
     connection.execute('CREATE SCHEMA public')
-    connection.execute(File.read(File.join(ROOT, 'sql/postgres/v1.sql')))
+    migrate!
+  end
+
+  def self.migrate!
+    ActiveRecord::Migration.suppress_messages { ActiveRecord::MigrationContext.new([MIGRATIONS]).migrate }
   end
 
   def self.prepare_sqlite!
@@ -38,9 +42,7 @@ module ClickManTestDatabase
     FileUtils.mkdir_p(File.dirname(database))
     FileUtils.rm_f(Dir["#{database}*"])
 
-    File.read(File.join(ROOT, 'sql/sqlite/v1.sql')).split(/;\s*$/).map(&:strip).reject(&:empty?).each do |statement|
-      ActiveRecord::Base.connection.execute(statement)
-    end
+    migrate!
   end
 end
 
@@ -51,7 +53,7 @@ require 'rails/test_help'
 Dir[File.join(__dir__, 'support/**/*.rb')].each { require it }
 
 class ActiveSupport::TestCase
-  FIXTURES = File.expand_path('../../fixtures', __dir__)
+  FIXTURES = File.expand_path('../../protocol/fixtures', __dir__)
 
   setup do
     ClickMan.reset_configuration!

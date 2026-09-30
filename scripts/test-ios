@@ -1,30 +1,24 @@
 #!/usr/bin/env bash
-# Runs the Swift SDK's tests on an iOS simulator: the UIKit half (the lifecycle
-# notices, the send on leaving the foreground) that `swift test` on the Mac
-# never compiles. Uses the XCFramework scripts/build-xcframework.sh built, and a
-# simulator of its own, "ClickMan Tests", created on the newest iOS runtime.
+# Runs the Swift client's tests on an iOS simulator: the UIKit half (the lifecycle
+# notices, the send on leaving the foreground) that `swift test` on the Mac never
+# compiles. Uses a simulator of its own, "ClickMan Tests", on the newest iOS runtime.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="ClickMan Tests"
 
-udid="$(xcrun simctl list devices available -j | NAME="$NAME" /usr/bin/python3 -c '
-import json, os, sys
-for devices in json.load(sys.stdin)["devices"].values():
-    for device in devices:
-        if device["name"] == os.environ["NAME"]:
-            print(device["udid"])
-            raise SystemExit
+udid="$(xcrun simctl list devices available -j | NAME="$NAME" ruby -rjson -e '
+  device = JSON.parse($stdin.read)["devices"].values.flatten.find { it["name"] == ENV["NAME"] }
+  puts device["udid"] if device
 ')"
 
 if [ -z "$udid" ]; then
-  read -r runtime devicetype < <(xcrun simctl list runtimes available -j | /usr/bin/python3 -c '
-import json, sys
-ios = [runtime for runtime in json.load(sys.stdin)["runtimes"] if runtime["platform"] == "iOS"]
-newest = max(ios, key=lambda runtime: [int(part) for part in runtime["version"].split(".")])
-iphone = next(kind for kind in newest["supportedDeviceTypes"] if kind["productFamily"] == "iPhone")
-print(newest["identifier"], iphone["identifier"])
-')
+  read -r runtime devicetype < <(xcrun simctl list runtimes available -j | ruby -rjson -e '
+    ios = JSON.parse($stdin.read)["runtimes"].select { it["platform"] == "iOS" }
+    newest = ios.max_by { it["version"].split(".").map(&:to_i) }
+    iphone = newest["supportedDeviceTypes"].find { it["productFamily"] == "iPhone" }
+    puts "#{newest["identifier"]} #{iphone["identifier"]}"
+  ')
   udid="$(xcrun simctl create "$NAME" "$devicetype" "$runtime")"
 fi
 
